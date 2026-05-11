@@ -1,0 +1,3 @@
+D:\vangogh_style_transfer\data\arles\testB\Street in Saintes-Maries.jpg
+D:\vangogh_style_transfer\data\arles\testB\Garden Behind a House.jpg
+D:\vangogh_style_transfer\data\arles\testB\Pink Peach Tree in Blossom Reminiscence of Mauve.jpg
