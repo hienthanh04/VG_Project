@@ -1,135 +1,102 @@
-# Pipeline Phục Hồi Tranh Van Gogh
-## NST Baseline → pix2pix Restoration
+# Van Gogh Artwork Restoration Project
+
+## 1. Project Objective
+This project aims to **restore degraded Van Gogh paintings** using a Pix2Pix model, focusing on three painting periods: **Arles, Paris, Netherlands**. The main goals are:
+
+- Reconstruct degraded images (grayscale, blur, noise, combined)
+- Improve restoration quality measured by **SSIM / PSNR**
+- Build a structured data pipeline with profiling and dataset quality monitoring
 
 ---
 
-## Cài đặt thư viện
+## 2. Dataset
 
-```bash
-pip install torch torchvision tqdm scikit-image opencv-python pandas matplotlib
-```
+- Total images: 426
+- Distribution per period:
+  - Arles: 188 images
+  - Paris: 153 images
+  - Netherlands: 85 images
+- All images have been **resized to 256×256 px** and converted to **JPG**
+- Dataset has been **verified**: no corrupted or duplicate images
 
----
 
-## Bước 0 — Chuẩn bị ảnh gốc
 
-Tải tranh Van Gogh màu gốc (gợi ý ~80–100 ảnh):
-- Dataset WikiArt Van Gogh: https://www.kaggle.com/datasets/ipythonx/van-gogh-paintings
-- Hoặc dataset CycleGAN: http://efrosgans.eecs.berkeley.edu/cyclegan/datasets/vangogh2photo.zip
+## 3. Data Profiling & Analysis
 
-Đặt tất cả ảnh vào thư mục:
-```
-vangogh_color/
-    *.jpg   (hoặc *.png)
-```
+The dataset was analyzed to extract important features:
 
----
+- **Brightness, Saturation, Edge Density** per painting period
+- **Width / Height Distribution**
+- **Total Images per Period**
 
-## Bước 1 — Xây dựng dataset phục hồi
+**Illustrative charts:**
 
-```bash
-# Mức suy giảm nhẹ (chỉ grayscale)
-python step1_build_dataset.py --input_dir ./vangogh_color --deg_type grayscale
+- **Boxplots of Brightness/Saturation/Edge Density by Period**
+<img width="435" height="285" alt="image" src="https://github.com/user-attachments/assets/614fc2b0-5a12-465a-9176-c8952153b553" />
+<img width="442" height="283" alt="image" src="https://github.com/user-attachments/assets/59e9401c-48ea-49a1-be93-a740f7a1f780" />
+<img width="431" height="281" alt="image" src="https://github.com/user-attachments/assets/f326cc0c-8045-49c1-ae23-7858a7a72e2b" />
 
-# Mức vừa (grayscale + blur) — khuyên dùng
-python step1_build_dataset.py --input_dir ./vangogh_color --deg_type grayscale_blur
 
-# Mức mạnh (grayscale + noise) — khuyên dùng cho báo cáo
-python step1_build_dataset.py --input_dir ./vangogh_color --deg_type grayscale_noise
-```
+- **Histogram of Width / Height**
+<img width="515" height="285" alt="image" src="https://github.com/user-attachments/assets/8db4503c-6f02-48e9-97a0-203f49d2f1cc" />
+<img width="513" height="279" alt="image" src="https://github.com/user-attachments/assets/b21ef6ce-217a-4d0a-8608-a9c9ad46dfaf" />
 
-Output:
-```
-dataset_restore/
-    train/    (~80% ảnh)
-    test/     (~20% ảnh)
-    samples/  (xem thử 6 ảnh mẫu)
-```
 
-**Kiểm tra ngay:** Mở thư mục `samples/` để xem ảnh ghép [degraded | original] trông đúng chưa.
+- **Total Images per Period**
+<img width="426" height="283" alt="image" src="https://github.com/user-attachments/assets/06242ae5-f88c-4df2-b765-6843de77c5c9" />
+
+**Purpose of profiling:** to understand the dataset and guide preprocessing, augmentation, and balancing strategies.
 
 ---
 
-## Bước 2 — Train pix2pix
+## 4. Preprocessing & Augmentation
 
-```bash
-# Smoke test (5 epoch, kiểm tra pipeline chạy được)
-python step2_train_pix2pix.py --epochs 5 --batch_size 2
-
-# Train thật (100 epoch, ~2–4 giờ tùy GPU)
-python step2_train_pix2pix.py --epochs 100 --batch_size 4
-
-# GPU mạnh
-python step2_train_pix2pix.py --epochs 200 --batch_size 8
-```
-
-Output:
-```
-output_pix2pix/
-    checkpoints/
-        generator_best.pth         (model tốt nhất)
-        checkpoint_epoch_XXXX.pth  (checkpoint định kỳ)
-    samples/
-        epoch_0010.jpg             (3 cột: degraded | restored | original)
-        epoch_0020.jpg
-        ...
-    train_log.csv                  (loss theo epoch)
-```
-
-**Theo dõi training:** Xem ảnh trong `samples/` sau mỗi 10 epoch để biết model đang học tốt không.
+- Resized all images to **256×256 px**
+- Applied **rotation, flipping, and other augmentations** to increase dataset size
+- Generated **degraded datasets**: grayscale, blur, noise, gray+blur+noise
+- Aspect ratio maintained using **padding or cropping** when necessary
 
 ---
 
-## Bước 3 — Đánh giá kết quả
+## 5. Model Training & Evaluation
 
-```bash
-python step3_evaluate.py \
-    --data_dir   ./dataset_restore/test \
-    --model_path ./output_pix2pix/checkpoints/generator_best.pth \
-    --output_dir ./eval_results
-```
+- Model: **Pix2Pix**
+- Input: degraded images
+- Output: restored images
+- Evaluation metrics: **SSIM, PSNR, Edge IoU**
+- Performance comparison between model versions:
 
-Output:
-```
-eval_results/
-    metrics.csv            (SSIM, PSNR, Edge IoU từng ảnh)
-    summary.txt            (báo cáo tổng hợp)
-    ssim_comparison.jpg    (scatter plot cải thiện SSIM)
-    visuals/
-        *_compare.jpg      (ảnh 3 chiều: degraded | restored | original)
-```
+1. **SSIM Improvement Across Versions**
+   - The following chart shows how SSIM improved from version 1 (v1) to version 5 (v5) after tuning model architecture and hyperparameters.
 
----
+   <img width="1076" height="648" alt="image" src="https://github.com/user-attachments/assets/006a430b-7692-4fa6-b370-272d06110275" />
 
-## Cấu trúc metric trong báo cáo
 
-| Metric | Ý nghĩa | Càng cao càng tốt? |
-|---|---|---|
-| SSIM | Giữ cấu trúc/nội dung | ✅ |
-| PSNR | Sai số pixel so với gốc | ✅ |
-| Edge IoU | Giữ cạnh/nét | ✅ |
-| SSIM delta | Cải thiện so với ảnh suy giảm | ✅ (phải > 0) |
+2. **SSIM Comparison Across Degradation Types**
+   - Comparison of SSIM between Light and Heavy degraded images (grayscale, blur, blur+noise, gray+blur+noise) for versions v1 and v2.
 
-**Điểm mạnh của hướng này:** Cả 3 metric đều có ground truth thật để so sánh,
-khác với NST (không có ground truth).
+   <img width="1075" height="648" alt="image" src="https://github.com/user-attachments/assets/2942dcd7-1369-49bf-bdac-56d31440ba12" />
+
+
+3. **SSIM Across Painting Periods**
+   - SSIM trends across the three Van Gogh periods (Arles, Paris, Netherlands) under different degradation types.
+
+   <img width="1076" height="648" alt="image" src="https://github.com/user-attachments/assets/5aaf2818-a6d5-4906-96b3-5cb519776976" />
 
 ---
 
-## Vai trò từng model trong báo cáo
+## 6. Conclusion
 
-| Model | Vai trò | Dữ liệu |
-|---|---|---|
-| NST | Baseline (đã có kết quả) | 30 ảnh × 3 style |
-| pix2pix | Model chính phục hồi | paired dataset |
-| CycleGAN | Mở rộng (nếu còn thời gian) | unpaired |
+- Data pipeline ensures a **consistent and high-quality dataset** for training
+- Model performance improved with **hyperparameter tuning**
+- Charts and CSV files provide **dataset monitoring and model evaluation**, demonstrating a **data product mindset**
+- Future work: extend to more degraded types or additional painting periods
 
 ---
 
-## Câu đóng khung đề tài (dùng trong báo cáo)
+## 7. Links
 
-> Trong hướng nghiên cứu chính, nhóm xây dựng bài toán phục hồi tranh
-> Van Gogh từ phiên bản suy giảm chất lượng bằng cách tạo dữ liệu cặp
-> từ tranh gốc màu và phiên bản grayscale/noise tương ứng. Với dạng dữ
-> liệu này, nhóm ưu tiên sử dụng mô hình pix2pix để học ánh xạ phục hồi
-> vì phù hợp với bài toán image-to-image có paired data. Bên cạnh đó,
-> NST và CycleGAN được giữ lại như các hướng tham khảo và mở rộng.
+- [Colab Notebooks] https://colab.research.google.com/drive/1v4iQ06UaMcVnS0M1JPz9CtZXZvfPx5qb?hl=vi#scrollTo=d_-RB7mwqWm8
+- [GitHub Repository](link_to_github)
+- [Summary Dataset CSV] 
+- [Restoration Results CSV]
