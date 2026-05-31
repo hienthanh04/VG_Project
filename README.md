@@ -97,6 +97,3 @@ The dataset was analyzed to extract important features:
 ## 7. Links
 
 - [Colab Notebooks] https://colab.research.google.com/drive/1v4iQ06UaMcVnS0M1JPz9CtZXZvfPx5qb?hl=vi#scrollTo=d_-RB7mwqWm8
-- [GitHub Repository](link_to_github)
-- [Summary Dataset CSV] 
-- [Restoration Results CSV]
